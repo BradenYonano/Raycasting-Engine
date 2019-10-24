@@ -74,7 +74,7 @@ def checkPoint(x0, y0, z0, x, y, z, r, phi, theta):
         return False
 
 def checkCube():
-
+#implement Cube Raycasting
     return False
 
 def checkSphere():
