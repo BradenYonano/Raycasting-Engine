@@ -60,7 +60,7 @@ def checkPoint(x0, y0, z0, x, y, z, r, phi, theta):
     xC = x0 - x
     yC = y0 - y
     zC = z0 - z
-
+#test comment
     #cross product the two matricies
     i = (yC * c) - (zC * b)
     j = (xC * c) - (zC * a)
