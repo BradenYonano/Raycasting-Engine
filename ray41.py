@@ -22,7 +22,7 @@ dppTHETA = fovTHETA / math.sqrt(res)
 speedMult = .1
 turnMult = .1
 
-
+#test comment
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
 ob = [0, 0, 0, 0]
 #point locations and colors
