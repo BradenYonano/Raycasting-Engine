@@ -24,7 +24,7 @@ turnMult = .1
 
 #test comment
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
-ob = [0, 0, 0, 0]
+ob = [0, 0, 0, 0, 2]
 #point locations and colors
 pX = [0, 0, 1, -1]
 pY = [1, -1, 0, 0]
@@ -38,10 +38,10 @@ cubeS = [5]
 cubeC = [(0, 0, 150)]
 
 #sphere center points, radii, and colors
-sphX = []
-sphY = []
-sphZ = []
-sphR = []
+sphX = [0]
+sphY = [10]
+sphZ = [0]
+sphR = [2]
 sphC = [(100, 0, 0)]
 
 BLACK = (0, 0, 0)
@@ -77,8 +77,29 @@ def checkCube():
 
     return False
 
-def checkSphere():
-    return False
+def checkSphere(x0, y0, z0, h, k, l, sR, r, phi, theta):
+    phi = math.radians(phi)
+    theta = math.radians(theta)
+
+    a = (math.cos(phi) * math.sin(theta) * r)  # + (math.cos(phi) * math.cos(theta) * thetaH) - (math.sin(phi) * phiH)
+    b = (math.sin(phi) * math.sin(theta) * r)  # + (math.sin(phi) * math.cos(theta) * thetaH) + (math.cos(phi) * phiH)
+    c = (math.cos(theta) * r)  # - (math.sin(theta) * thetaH)
+
+    #now do the formula of the discriminant (B^2 - 4AC)
+
+    bb = ((2 * x0 * a) - (2 * h * a) + (2 * y0 * b) - (2 * k * b) + (2 * z0 * c) - (2 * l * c))
+    bb = bb * bb
+    aa = (a * a) + (b * b) + (c * c)
+    cc = ((x0 * x0) + (y0 * y0) + (z0 * z0) + (h * h) + (k * k) + (l * l) - (2 * h * x0) - (2 * k * y0) - (2 * l * z0) - (sR * sR))
+
+    discrim = bb - (4 * aa * cc)
+
+    
+    if discrim >= 0:
+        return True
+    else:
+        return False
+
 
 #checks to make sure that the object is in front of the camera
 def inView(x0, y0, x, y, phi):
@@ -111,6 +132,7 @@ pygame.mouse.set_visible(False)
 
 font = pygame.font.Font(None, 30)
 clock = pygame.time.Clock()
+
 while True:
     keys = pygame.key.get_pressed()
     window.fill(WHITE)
@@ -154,24 +176,35 @@ while True:
     curY = n / 2
 
 
-
     for f in range(int(pPR)):
         for l in range(int(pPR)):
+            # keeps track of how many objects per type are checked for
+            objP = 0
+            objS = 0
+            objC = 0
             for u in range(0, len(ob)):
-                # all check methods and object type lists
-                checks = [checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[u], pY[u], pZ[u], r, curPHI, curTHETA), checkCube(), checkSphere()]
+
+
                 if ob[u] == 0:
-                    if inView(cameraLocX, cameraLocY, pX[u], pY[u], curPHI):
-                        if checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[u], pY[u], pZ[u], r, curPHI, curTHETA):
-                            pygame.draw.circle(window, pColor[u], (int(curX), int(curY)), int(n / 2))
+                    uP = u - (objC + objS)
+                    if inView(cameraLocX, cameraLocY, pX[uP], pY[uP], curPHI):
+                        if checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[uP], pY[uP], pZ[uP], r, curPHI, curTHETA):
+                            pygame.draw.circle(window, pColor[uP], (int(curX), int(curY)), int(n / 2))
+                    objP += 1
                 elif ob[u] == 1:
-                    if inView(cameraLocX, cameraLocY, cubeX[u], cubeY[u], curPHI):
+                    uC = u - (objP + objS)
+                    if inView(cameraLocX, cameraLocY, cubeX[uC], cubeY[uC], curPHI):
                         if checkCube():
-                            pygame.draw.circle(window, cubeC[u], (int(curX), int(curY)), int(n / 2))
+                            pygame.draw.circle(window, cubeC[uC], (int(curX), int(curY)), int(n / 2))
+                    objC += 1
                 elif ob[u] == 2:
-                    if inView(cameraLocX, cameraLocY, sphX[u], sphY[u], curPHI):
-                        if checkSphere():
-                            print("sphere")
+                    uS = u - (objP + objC)
+
+                    if inView(cameraLocX, cameraLocY, sphX[uS], sphY[uS], curPHI):
+                        if checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphX[uS], sphY[uS], sphZ[uS], sphR[uS], r, curPHI, curTHETA):
+                            pygame.draw.circle(window, sphC[uS], (int(curX), int(curY)), int(n / 2))
+                    objS += 1
+
             curPHI -= dppPHI
             curX += n
         curX = n / 2
