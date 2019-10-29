@@ -22,14 +22,19 @@ dppTHETA = fovTHETA / math.sqrt(res)
 speedMult = .1
 turnMult = .1
 
+#light source coordinates
+lx = 3
+ly = 10
+lz = 0
+
 #test comment
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
-ob = [0, 0, 0, 0, 2]
+ob = [0, 2, 2]
 #point locations and colors
-pX = [0, 0, 1, -1]
-pY = [1, -1, 0, 0]
-pZ = [0, 0, 0, 0]
-pColor = [(200, 200, 0), (0, 255, 0), (255, 0, 0), (0, 0, 255)]
+pX = [lx, 0, 1, -1]
+pY = [ly, -1, 0, 0]
+pZ = [lz, 0, 0, 0]
+pColor = [(255, 255, 255), (0, 255, 0), (255, 0, 0), (0, 0, 255)]
 #cube center points, side lengths, and colors
 cubeX = [10]
 cubeY = [10]
@@ -38,12 +43,12 @@ cubeS = [5]
 cubeC = [(0, 0, 150)]
 
 #sphere center points, radii, and colors
-sphX = [0]
-sphY = [10]
-sphZ = [0]
-sphR = [2]
+sphX = [0, 6]
+sphY = [10, 10]
+sphZ = [0, 0]
+sphR = [2, 2]
 
-sphC = [(250, 0, 0)]
+sphC = [(250, 0, 0), (0, 0, 250)]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -125,13 +130,16 @@ def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
     y = (t * b) + y0
     z = (t * c) + z0
 
-    #find distance from camera to intersect point
-    d = math.sqrt(((x0 - x) * (x0 - x)) + ((y0 - y) * (y0 - y)) + ((z0 - z) * (z0 - z)))
+    #find distance from camera or light source to intersect point
+
+
+
+    d = math.sqrt(((lx - x) * (lx - x)) + ((ly - y) * (ly - y)) + ((lz - z) * (lz - z)))
 
     #now return a fraction dependant on the size of the distance
     maxDist = 1
 
-    return (maxDist / (d * 5))
+    return (maxDist / (d * 2))
 
 #checks to make sure that the object is in front of the camera
 def inView(x0, y0, x, y, phi):
