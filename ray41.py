@@ -3,7 +3,7 @@ import pygame
 
 pygame.init()
 
-# Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier
+# Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier, fram rate target
 wS = 1000
 wA = wS * wS
 cameraLocX = 0
@@ -14,13 +14,15 @@ phiH = 1
 thetaH = 1
 phiDirec = 90
 thetaDirec = 90
-res = 5000
+res = 1000
 fovPHI = 90
 fovTHETA = 90
 dppPHI = fovPHI / math.sqrt(res)
 dppTHETA = fovTHETA / math.sqrt(res)
 speedMult = .1
 turnMult = .1
+frTarget = 10
+
 
 #light source coordinates
 lx = 3
@@ -29,7 +31,7 @@ lz = 0
 
 #test comment
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
-ob = [0, 2, 2]
+ob = [0, 2, 2, 2]
 #point locations and colors
 pX = [lx, 0, 1, -1]
 pY = [ly, -1, 0, 0]
@@ -43,12 +45,12 @@ cubeS = [5]
 cubeC = [(0, 0, 150)]
 
 #sphere center points, radii, and colors
-sphX = [0, 6]
-sphY = [10, 10]
-sphZ = [0, 0]
-sphR = [2, 2]
+sphX = [0, 7, 7]
+sphY = [10, 10, 8]
+sphZ = [0, 0, 0]
+sphR = [2, 2, 1]
 
-sphC = [(250, 0, 0), (0, 0, 250)]
+sphC = [(250, 0, 0), (0, 0, 250), (0, 250, 0)]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -74,10 +76,12 @@ def checkPoint(x0, y0, z0, x, y, z, r, phi, theta):
 
     d = math.sqrt(((i * i) + (j * j) + (k * k)) / ((a * a) + (b * b) + (c * c)))
 
+    #distance from point to camera
+    dd = math.sqrt(((x0 - x) * (x0 - x)) + ((y0 - y) * (y0 - y)) + ((z0 - z) * (z0 - z)))
     if d <= 0.05:
-        return True
+        return True, dd
     else:
-        return False
+        return False, dd
 
 def checkCube():
 
@@ -91,20 +95,39 @@ def checkSphere(x0, y0, z0, h, k, l, sR, r, phi, theta):
     b = (math.sin(phi) * math.sin(theta) * r)  # + (math.sin(phi) * math.cos(theta) * thetaH) + (math.cos(phi) * phiH)
     c = (math.cos(theta) * r)  # - (math.sin(theta) * thetaH)
 
-    #now do the formula of the discriminant (B^2 - 4AC)
-
+    # a b and c for the quadratic involving the line and the sphere
     bb = ((2 * x0 * a) - (2 * h * a) + (2 * y0 * b) - (2 * k * b) + (2 * z0 * c) - (2 * l * c))
-    bb = bb * bb
     aa = (a * a) + (b * b) + (c * c)
     cc = ((x0 * x0) + (y0 * y0) + (z0 * z0) + (h * h) + (k * k) + (l * l) - (2 * h * x0) - (2 * k * y0) - (2 * l * z0) - (sR * sR))
+    # now do the formula of the discriminant (B^2 - 4AC)
+    bb = bb * bb
+
 
     discrim = bb - (4 * aa * cc)
 
 
     if discrim >= 0:
-        return True
+        # a b and c for the quadratic involving the line and the sphere
+        bb = ((2 * x0 * a) - (2 * h * a) + (2 * y0 * b) - (2 * k * b) + (2 * z0 * c) - (2 * l * c))
+
+
+        # quadratic equation
+        # its supposed to be -b + or - but I still need to implement that
+        # actually I found that only the - seems to result in a sphere that is not inverted
+        t = ((-1 * bb) - math.sqrt((bb * bb) - (4 * aa * cc))) / (2 * aa)
+
+        # now plug t in to the parametric forms of the line to get the intersect point(s)
+        x = (t * a) + x0
+        y = (t * b) + y0
+        z = (t * c) + z0
+
+        # find distance from camera or light source to intersect point
+        d = math.sqrt(((x0 - x) * (x0 - x)) + ((y0 - y) * (y0 - y)) + ((z0 - z) * (z0 - z)))
+        return True, d
     else:
-        return False
+        #placeholder distance (will never even be checked)
+        d = 1000000
+        return False, d
 
 def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
     phi = math.radians(phi)
@@ -123,6 +146,7 @@ def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
 
     #quadratic equation
     #its supposed to be -b + or - but I still need to implement that
+    #actually I found that only the - seems to result in a sphere that is not inverted
     t = ((-1 * bb) - math.sqrt((bb * bb) - (4 * aa * cc))) / (2 * aa)
 
     #now plug t in to the parametric forms of the line to get the intersect point(s)
@@ -130,16 +154,23 @@ def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
     y = (t * b) + y0
     z = (t * c) + z0
 
+    #the light source location
+    llx = x0
+    lly = y0
+    llz = z0
+
     #find distance from camera or light source to intersect point
-
-
-
-    d = math.sqrt(((lx - x) * (lx - x)) + ((ly - y) * (ly - y)) + ((lz - z) * (lz - z)))
-
+    d = math.sqrt(((llx - x) * (llx - x)) + ((lly - y) * (lly - y)) + ((llz - z) * (llz - z)))
+    #d = math.sqrt(((lx - x) * (lx - x)) + ((ly - y) * (ly - y)) + ((lz - z) * (lz - z)))
     #now return a fraction dependant on the size of the distance
     maxDist = 1
 
-    return (maxDist / (d * 2))
+    distanceThreshold = 1
+    if ((d*d) >= distanceThreshold):
+        return (maxDist / (d * d))
+    else:
+        return (maxDist / (distanceThreshold))
+
 
 #checks to make sure that the object is in front of the camera
 def inView(x0, y0, x, y, phi):
@@ -173,14 +204,28 @@ pygame.mouse.set_visible(False)
 font = pygame.font.Font(None, 30)
 clock = pygame.time.Clock()
 
+
+
 while True:
+    if clock.get_fps() < frTarget:
+        res -= 1
+    else:
+        res += 1
+
+    dppPHI = fovPHI / math.sqrt(res)
+    dppTHETA = fovTHETA / math.sqrt(res)
+    # n is the diameter of each circle
+    n = math.sqrt(wA / res)
+    # pPerR is the pixels per row/column
+    pPR = wS / n
+
     keys = pygame.key.get_pressed()
     window.fill(BLACK)
 
     # display fps
     fps = font.render(str(int(clock.get_fps())), True, WHITE)
     window.blit(fps, ((wS - 25), 5))
-    clock.tick(30)
+    clock.tick(60)
 
     # get the mouse movement vector values
     mous = pygame.mouse.get_rel()
@@ -206,6 +251,14 @@ while True:
         cameraLocY = (math.sin(math.radians(phiDirec)) * math.sin(
             math.radians(thetaDirec)) * -r * speedMult) + cameraLocY
         cameraLocZ = (math.cos(math.radians(thetaDirec)) * -r * speedMult) + cameraLocZ
+    #for strafing add 90 degrees to the phi direction to go left and right, also we dont need the z movement because strafing only deals with the x-y plane
+    if keys[pygame.K_a]:
+        cameraLocX = (math.cos(math.radians(phiDirec + 90)) * math.sin(math.radians(thetaDirec)) * r * speedMult) + cameraLocX
+        cameraLocY = (math.sin(math.radians(phiDirec + 90)) * math.sin(math.radians(thetaDirec)) * r * speedMult) + cameraLocY
+
+    elif keys[pygame.K_d]:
+        cameraLocX = (math.cos(math.radians(phiDirec + 90)) * math.sin(math.radians(thetaDirec)) * -r * speedMult) + cameraLocX
+        cameraLocY = (math.sin(math.radians(phiDirec + 90)) * math.sin(math.radians(thetaDirec)) * -r * speedMult) + cameraLocY
 
     # I want the middle to be pointing straight so I added half the field of view to the starting phi angle
     curPHI = phiDirec + (fovPHI / 2)
@@ -222,15 +275,26 @@ while True:
             objP = 0
             objS = 0
             objC = 0
+
+            #distance from camera to closest object that has intersect point with camera
+            objDist = -1
+            #Color of closest object to camera that intersects with ray
+            objC = (0, 0, 0)
             for u in range(0, len(ob)):
 
 
                 if ob[u] == 0:
                     if inView(cameraLocX, cameraLocY, pX[objP], pY[objP], curPHI):
-                        if checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[objP], pY[objP], pZ[objP], r, curPHI, curTHETA):
-                            pygame.draw.circle(window, pColor[objP], (int(curX), int(curY)), int(n / 2))
+                        # boolean to check if the ray intersects the sphere, distance from camera to intersect point
+                        cP, distP = checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[objP], pY[objP], pZ[objP], r, curPHI, curTHETA)
+                        if cP and distP < objDist:
+                            objC = pColor[objP]
+                            objDist = distP
+                        elif cP and objDist < 0:
+                            objC = pColor[objP]
+                            objDist = distP
                     objP += 1
-
+                #cube code needs to be updated
                 elif ob[u] == 1:
                     if inView(cameraLocX, cameraLocY, cubeX[objC], cubeY[objC], curPHI):
                         if checkCube():
@@ -239,11 +303,22 @@ while True:
 
                 elif ob[u] == 2:
                     if inView(cameraLocX, cameraLocY, sphX[objS], sphY[objS], curPHI):
-
-                        if checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS], sphR[objS], r, curPHI, curTHETA):
+                        #boolean to check if the ray intersects the sphere, distance from camera to intersect point
+                        cS, distS = checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS], sphR[objS], r, curPHI, curTHETA)
+                        if cS and distS < objDist:
                             sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS], sphR[objS], r, curPHI, curTHETA)
-                            pygame.draw.circle(window, (sphC[objS][0] * sS, sphC[objS][1] * sS, sphC[objS][2] * sS), (int(curX), int(curY)), int(n / 2))
+                            objC = (sphC[objS][0] * sS, sphC[objS][1] * sS, sphC[objS][2] * sS)
+                            objDist = distS
+                        elif cS and objDist < 0:
+                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS],sphR[objS], r, curPHI, curTHETA)
+                            objC = (sphC[objS][0] * sS, sphC[objS][1] * sS, sphC[objS][2] * sS)
+                            objDist = distS
                     objS += 1
+
+            #draw the pixel based on which object is closest
+            if objDist >= 0:
+                pygame.draw.circle(window, objC, (int(curX), int(curY)), int(n / 2))
+
 
             curPHI -= dppPHI
             curX += n
