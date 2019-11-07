@@ -3,6 +3,30 @@ import pygame
 
 pygame.init()
 
+class Sphere:
+        def __init__(self, r, m, e, c, p):
+            self.radius = r
+            self.mass = m
+            self.elasticity = e
+            self.color = c
+            self.position = p
+
+        def getRadius(self):
+            return self.radius
+
+        def getElasticity(self):
+            return self.elasticity
+
+        def getPosition(self):
+            return self.position
+
+        def getColor(self):
+            return self.color
+
+        def getPosition(self):
+            return self.position
+
+
 # Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier, fram rate target
 wS = 1000
 wA = wS * wS
@@ -21,7 +45,7 @@ dppPHI = fovPHI / math.sqrt(res)
 dppTHETA = fovTHETA / math.sqrt(res)
 speedMult = .1
 turnMult = .1
-frTarget = 10
+frTarget = 30
 
 
 #light source coordinates
@@ -44,13 +68,12 @@ cubeZ = [10]
 cubeS = [5]
 cubeC = [(0, 0, 150)]
 
-#sphere center points, radii, and colors
-sphX = [0, 7, 7]
-sphY = [10, 10, 8]
-sphZ = [0, 0, 0]
-sphR = [2, 2, 1]
+#sphere creations, (radii, mass, elasticity, color, position)
+sphere1 = Sphere(2, 100, 1, (250, 0, 0), (0, 10, 0))
+sphere2 = Sphere(2, 10, 1, (0, 0, 250), (3, 10, 0))
+sphere3 = Sphere(0.5, 5, 1, (255, 255, 255), (0, 3, 0))
+sphs = [sphere1, sphere2, sphere3]
 
-sphC = [(250, 0, 0), (0, 0, 250), (0, 250, 0)]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -87,9 +110,15 @@ def checkCube():
 
     return False
 
-def checkSphere(x0, y0, z0, h, k, l, sR, r, phi, theta):
+def checkSphere(x0, y0, z0, sphere, r, phi, theta):
     phi = math.radians(phi)
     theta = math.radians(theta)
+
+    pos = sphere.getPosition()
+    h = pos[0]
+    k = pos[1]
+    l = pos[2]
+    sR = sphere.getRadius()
 
     a = (math.cos(phi) * math.sin(theta) * r)  # + (math.cos(phi) * math.cos(theta) * thetaH) - (math.sin(phi) * phiH)
     b = (math.sin(phi) * math.sin(theta) * r)  # + (math.sin(phi) * math.cos(theta) * thetaH) + (math.cos(phi) * phiH)
@@ -129,7 +158,7 @@ def checkSphere(x0, y0, z0, h, k, l, sR, r, phi, theta):
         d = 1000000
         return False, d
 
-def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
+def sphereShader(x0, y0, z0, sphere, r, phi, theta):
     phi = math.radians(phi)
     theta = math.radians(theta)
 
@@ -139,6 +168,11 @@ def sphereShader(x0, y0, z0, h, k, l, sR, r, phi, theta):
 
     #we must now find t for the line equations to get the point(s) that they intersect at
     #a b and c for the quadratic involving the line and the sphere
+    pos = sphere.getPosition()
+    h = pos[0]
+    k = pos[1]
+    l = pos[2]
+    sR = sphere.getRadius()
 
     bb = ((2 * x0 * a) - (2 * h * a) + (2 * y0 * b) - (2 * k * b) + (2 * z0 * c) - (2 * l * c))
     aa = (a * a) + (b * b) + (c * c)
@@ -302,16 +336,19 @@ while True:
                     objC += 1
 
                 elif ob[u] == 2:
-                    if inView(cameraLocX, cameraLocY, sphX[objS], sphY[objS], curPHI):
+                    position = sphs[objS].getPosition()
+                    if inView(cameraLocX, cameraLocY, position[0], position[1], curPHI):
                         #boolean to check if the ray intersects the sphere, distance from camera to intersect point
-                        cS, distS = checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS], sphR[objS], r, curPHI, curTHETA)
+                        cS, distS = checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
                         if cS and distS < objDist:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS], sphR[objS], r, curPHI, curTHETA)
-                            objC = (sphC[objS][0] * sS, sphC[objS][1] * sS, sphC[objS][2] * sS)
+                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
+                            color = sphs[objS].getColor()
+                            objC = (color[0] * sS, color[1] * sS, color[2] * sS)
                             objDist = distS
                         elif cS and objDist < 0:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphX[objS], sphY[objS], sphZ[objS],sphR[objS], r, curPHI, curTHETA)
-                            objC = (sphC[objS][0] * sS, sphC[objS][1] * sS, sphC[objS][2] * sS)
+                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
+                            color = sphs[objS].getColor()
+                            objC = (color[0] * sS, color[1] * sS, color[2] * sS)
                             objDist = distS
                     objS += 1
 
