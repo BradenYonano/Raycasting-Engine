@@ -1,6 +1,9 @@
 import math
 import pygame
+import os
 
+#sets the screen to the top left corner of the monitor
+os.environ["SDL_VIDEO_WINDOW_POS"] = "%d, %d" % (5, 5)
 pygame.init()
 
 class Sphere:
@@ -49,13 +52,13 @@ frTarget = 30
 
 
 #light source coordinates
-lx = 3
-ly = 10
+lx = 1.5
+ly = 8
 lz = 0
 
 #test comment
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
-ob = [0, 2, 2, 2]
+ob = [2, 2, 2]
 #point locations and colors
 pX = [lx, 0, 1, -1]
 pY = [ly, -1, 0, 0]
@@ -220,7 +223,7 @@ def inView(x0, y0, x, y, phi):
     return (k * y) >= k * ((s * (x - x0)) + y0)
 
 
-window = pygame.display.set_mode((wS, wS))
+window = pygame.display.set_mode((wS, wS), 0, 0)
 
 # n is the diameter of each circle
 n = math.sqrt(wA / res)
@@ -364,7 +367,26 @@ while True:
         curY += n
         curTHETA += dppTHETA
 
+    w = font.render("W", True, (150, 150, 150))
+    a = font.render("A", True, (150, 150, 150))
+    s = font.render("S", True, (150, 150, 150))
+    d = font.render("D", True, (150, 150, 150))
+    if keys[pygame.K_w]:
+        w = font.render("W", True, WHITE)
 
+    if keys[pygame.K_a]:
+        a = font.render("A", True, WHITE)
+
+    if keys[pygame.K_s]:
+        s = font.render("S", True, WHITE)
+
+    if keys[pygame.K_d]:
+        d = font.render("D", True, WHITE)
+
+    window.blit(w, (30, (wS - 50)))
+    window.blit(a, (5, (wS - 25)))
+    window.blit(s, (30, (wS - 25)))
+    window.blit(d, (55, (wS - 25)))
 
     pygame.display.update()
 
