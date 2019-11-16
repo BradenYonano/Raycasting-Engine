@@ -73,7 +73,7 @@ cubeC = [(0, 0, 150)]
 
 #sphere creations, (radii, mass, elasticity, color, position)
 sphere1 = Sphere(2, 100, 1, (250, 0, 0), (0, 10, 0))
-sphere2 = Sphere(2, 10, 1, (0, 0, 250), (3, 10, 0))
+sphere2 = Sphere(2, 10, 1, (0, 0, 250), (6, 10, 0))
 sphere3 = Sphere(0.5, 5, 1, (255, 255, 255), (0, 3, 0))
 sphs = [sphere1, sphere2, sphere3]
 
@@ -244,6 +244,10 @@ clock = pygame.time.Clock()
 
 
 while True:
+    #set phi to within -2pi and 2pi  still have to figure something out with this(and theta to within -pi and pi)
+    phiDirec = phiDirec % 360
+
+
     if clock.get_fps() < frTarget:
         res -= 1
     else:
@@ -312,7 +316,7 @@ while True:
             objP = 0
             objS = 0
             objC = 0
-
+            #comment for creating reflection branch
             #distance from camera to closest object that has intersect point with camera
             objDist = -1
             #Color of closest object to camera that intersects with ray
@@ -387,6 +391,9 @@ while True:
     window.blit(a, (5, (wS - 25)))
     window.blit(s, (30, (wS - 25)))
     window.blit(d, (55, (wS - 25)))
+
+    direcLabel = font.render(str(int(phiDirec)) + "*", True, WHITE)
+    window.blit(direcLabel, (wS/2, 10))
 
     pygame.display.update()
 
