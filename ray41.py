@@ -1,6 +1,7 @@
 import math
 import pygame
 import os
+import random
 
 #sets the screen to the top left corner of the monitor
 os.environ["SDL_VIDEO_WINDOW_POS"] = "%d, %d" % (5, 5)
@@ -24,8 +25,11 @@ class Sphere:
         def getElasticity(self):
             return self.elasticity
 
-        def getPosition(self):
-            return self.position
+        def setPosition(self, position):
+            self.position = position
+
+        def setColor(self, Color):
+            self.color = Color
 
         def getColor(self):
             return self.color
@@ -93,7 +97,7 @@ cubeC = [(0, 0, 150)]
 
 #sphere creations, (radii, mass, elasticity, color, position)
 sphere1 = Sphere(2, 100, 1, (100, 100, 100), (0, 10, 0))
-sphere2 = Sphere(1, 10, 1, (0, 0, 250), (4, 10, 0))
+sphere2 = Sphere(1, 10, 1, (100, 0, 150), (4, 10, 0))
 sphere3 = Sphere(0.5, 5, 1, (255, 255, 255), (0, 3, 0))
 
 sphs = [sphere1, sphere2, sphere3]
@@ -232,13 +236,22 @@ def sphereShader(x0, y0, z0, sphere, r, phi, theta):
         return (maxDist / (distanceThreshold))
 
 
-def sphereReflection(x0, y0, z0, sphere, intersect):
+def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
     #see notebook for further explanations on the math
+    phi = math.radians(phi)
+    theta = math.radians(theta)
+
+    #direction Vector of the original Ray
+    a = (math.cos(phi) * math.sin(theta) * r)
+    b = (math.sin(phi) * math.sin(theta) * r)
+    c = (math.cos(theta) * r)
 
     #the intersect point
     xI = intersect[0]
     yI = intersect[1]
     zI = intersect[2]
+
+
 
     #center of the sphere
     pos = sphere.getPosition()
@@ -252,11 +265,15 @@ def sphereReflection(x0, y0, z0, sphere, intersect):
     e = k - yI
     f = l - zI
 
+
+    #Dot product of original vector and reflection vector
+    dP = (d * a) + (e * b) + (f * c)
+
     #THIS IS THE PART THAT DOES NOT WORK YET
     #perpendicular d, e, and f
-    pd = -1/d
+    pd = (2 * dP * d) - a
     pe = 1/e
-    pf = -1 * f
+    pf = -f
 
 
 
@@ -269,9 +286,9 @@ def sphereReflection(x0, y0, z0, sphere, intersect):
     zR = ((((t2 * f) + l) - z0) * 2) - z0
 
     #direction vector of the reflected line
-    aR = xI - xR
-    bR = yI - yR
-    cR = zI - zR
+    aR = (2 * dP * d) - a #xI - xR
+    bR = (2 * dP * e) - b #yI - yR
+    cR = (2 * dP * f) - c #zI - zR
 
     for u in range(0, len(ob)):
         if not ob[u] == sphere:
@@ -327,7 +344,7 @@ pygame.mouse.set_visible(False)
 font = pygame.font.Font(None, 30)
 clock = pygame.time.Clock()
 
-
+count = 0
 
 while True:
     if clock.get_fps() < frTarget:
@@ -357,6 +374,14 @@ while True:
     if keys[pygame.K_ESCAPE]:
         break
 
+    #moves sphere1 and does some funky color things
+    if not count > 201:
+        count += 1
+    else:
+        Co = sphere1.getColor()
+        p = sphere1.getPosition()
+        sphere1.setPosition((p[0] + 0.01, p[1] + 0.01, p[2] + 0.01))
+        #sphere1.setColor((random.randint(Co[0] - 10, Co[0] + 10), random.randint(Co[1] - 10, Co[1] + 10), random.randint(Co[2] - 10, Co[2] + 10)))
 
     if event.type == pygame.MOUSEMOTION:
         phiDirec -= (mous[0] * turnMult)
@@ -434,14 +459,14 @@ while True:
 
                         if cS and distS < objDist:
                             sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
-                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect)
+                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
                             if keys[pygame.K_t]:
                                 sS = 1
                             objC = (color[0] * sS, color[1] * sS, color[2] * sS)
                             objDist = distS
                         elif cS and objDist < 0:
                             sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
-                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect)
+                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
                             if keys[pygame.K_t]:
                                 sS = 1
                             objC = (color[0] * sS, color[1] * sS, color[2] * sS)
