@@ -8,7 +8,7 @@ os.environ["SDL_VIDEO_WINDOW_POS"] = "%d, %d" % (5, 5)
 pygame.init()
 
 class Sphere:
-        def __init__(self, r, m, e, c, p):
+        def __init__(self, n, r, m, e, c, p):
             self.radius = r
             self.mass = m
             self.elasticity = e
@@ -17,6 +17,7 @@ class Sphere:
             self.velocity = (0, 0, 0)
             self.angle = math.pi/2
             self.type = "sphere"
+            self.name = n
             self.numType = 2
 
         def getRadius(self):
@@ -48,7 +49,7 @@ class Sphere:
         def getPosition(self):
             return self.position
 
-        def setSpeed(self, v):
+        def setVelocity(self, v):
             self.velocity = v
 
 
@@ -73,8 +74,8 @@ dppPHI = fovPHI / math.sqrt(res)
 dppTHETA = fovTHETA / math.sqrt(res)
 speedMult = .1
 turnMult = .1
-frTarget = 30
-
+frTarget = 10
+pixlType = 1
 
 #light source coordinates
 lx = 1.5
@@ -96,9 +97,9 @@ cubeS = [5]
 cubeC = [(0, 0, 150)]
 
 #sphere creations, (radii, mass, elasticity, color, position)
-sphere1 = Sphere(2, 100, 1, (100, 100, 100), (0, 10, 0))
-sphere2 = Sphere(1, 10, 1, (100, 0, 150), (4, 10, 0))
-sphere3 = Sphere(0.5, 5, 1, (255, 255, 255), (0, 3, 0))
+sphere1 = Sphere("worldObject", 2, 100, 1, (127, 127, 127), (0, 10, 0))
+sphere2 = Sphere("worldObject", 1, 10, 1, (0, 0, 150), (4, 10, 0))
+sphere3 = Sphere("worldObject", 0.5, 5, 1, (255, 255, 255), (0, 3, 0))
 
 sphs = [sphere1, sphere2, sphere3]
 
@@ -258,7 +259,7 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
     h = pos[0]
     k = pos[1]
     l = pos[2]
-
+    # http://www.3dkingdoms.com/weekly/weekly.php?a=2
 
     #the direction vector of the reflection line
     d = h - xI
@@ -277,26 +278,21 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
 
 
 
-    #t coefficient of the line perpendicular through the reflection line
-    t2 = (x0 - h)/(d + pd)
 
-    #Relfected point
-    xR = ((((t2 * d) + h) - x0) * 2) - x0
-    yR = ((((t2 * e) + k) - y0) * 2) - y0
-    zR = ((((t2 * f) + l) - z0) * 2) - z0
 
     #direction vector of the reflected line
-    aR = (2 * dP * d) - a #xI - xR
-    bR = (2 * dP * e) - b #yI - yR
-    cR = (2 * dP * f) - c #zI - zR
 
-    for u in range(0, len(ob)):
-        if not ob[u] == sphere:
-            pos2 = ob[u].getPosition()
+    aR = -((2 * dP * d) - a) #xI - xR
+    bR = -((2 * dP * e) - b) #yI - yR
+    cR = -((2 * dP * f) - c) #zI - zR
+
+    for ur in range(0, len(ob)):
+        if not ob[ur] == sphere:
+            pos2 = ob[ur].getPosition()
             h2 = pos2[0]
             k2 = pos2[1]
             l2 = pos2[2]
-            sR = ob[u].getRadius()
+            sR = ob[ur].getRadius()
 
             # a b and c for the quadratic involving the reflected line and other spheres
             bb = ((2 * xI * aR) - (2 * h2 * aR) + (2 * yI * bR) - (2 * k2 * bR) + (2 * zI * cR) - (2 * l2 * cR))
@@ -305,11 +301,11 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
 
             # now do the formula of the discriminant (B^2 - 4AC)
             discrim = (bb * bb) - (4 * aa * cc)
+            col = sphere.getColor()
+            colR = ob[ur].getColor()
             if discrim >= 0:
-                return ob[u].getColor()
-            else:
-                col = sphere.getColor()
-                return col
+                return ((colR[0] + col[0])/2, (colR[1] + col[1])/2, (colR[2] + col[2])/2)
+    return col
 
 
 #checks to make sure that the object is in front of the camera
@@ -374,14 +370,24 @@ while True:
     if keys[pygame.K_ESCAPE]:
         break
 
+
+
+    if keys[pygame.K_SPACE]:
+        colorRand = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        ob.append(Sphere("projectile", 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
+        sphs.append(Sphere("projectile", 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
+
     #moves sphere1 and does some funky color things
     if not count > 201:
         count += 1
     else:
         Co = sphere1.getColor()
         p = sphere1.getPosition()
-        sphere1.setPosition((p[0] + 0.01, p[1] + 0.01, p[2] + 0.01))
-        #sphere1.setColor((random.randint(Co[0] - 10, Co[0] + 10), random.randint(Co[1] - 10, Co[1] + 10), random.randint(Co[2] - 10, Co[2] + 10)))
+        sphere1.setPosition((p[0] + 0.01, p[1] + 0.01, p[2] + 0.00))
+        #sphere1.setColor((random.randint(Co[0] - 3, Co[0] + 3), random.randint(Co[1] - 3, Co[1] + 3), random.randint(Co[2] - 3, Co[2] + 3)))
+
+
+
 
     if event.type == pygame.MOUSEMOTION:
         phiDirec -= (mous[0] * turnMult)
@@ -413,8 +419,14 @@ while True:
     # I want the middle to be pointing straight so I subtracted half the theta field of view to make it start facing up
     curTHETA = thetaDirec - (fovTHETA / 2)
 
-    curX = n / 2
-    curY = n / 2
+    #for circles
+    if pixlType == 0:
+        curX = n / 2
+        curY = n / 2
+    elif pixlType == 1:
+        curX = 0
+        curY = 0
+    #for squares
 
 
     for f in range(int(pPR)):
@@ -477,14 +489,23 @@ while True:
 
             #draw the pixel based on which object is closest
             if objDist >= 0:
-                pygame.draw.circle(window, objC, (int(curX), int(curY)), int(n / 2))
+                pixlRect = pygame.Rect(curX, curY, n, n)
+                if pixlType == 0:
+                    pygame.draw.circle(window, objC, (int(curX), int(curY)), int(n / 2))
+                elif pixlType == 1:
+                    pygame.draw.rect(window, objC, pixlRect)
 
 
             curPHI -= dppPHI
             curX += n
-        curX = n / 2
-        curPHI = phiDirec + (fovPHI / 2)
+        #for circles
+        if pixlType == 0:
+            curX = n / 2
+        elif pixlType == 1:
+            curX = 0
         curY += n
+
+        curPHI = phiDirec + (fovPHI / 2)
         curTHETA += dppTHETA
 
     w = font.render("W", True, (150, 150, 150))
