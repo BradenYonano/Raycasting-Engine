@@ -8,17 +8,21 @@ os.environ["SDL_VIDEO_WINDOW_POS"] = "%d, %d" % (5, 5)
 pygame.init()
 
 class Sphere:
-        def __init__(self, n, r, m, e, c, p):
-            self.radius = r
-            self.mass = m
-            self.elasticity = e
-            self.color = c
-            self.position = p
+        def __init__(self, name, radius, reflectivity, mass, elasticity, color, position):
+            self.radius = radius
+            self.mass = mass
+            self.elasticity = elasticity
+            self.color = color
+            self.position = position
             self.velocity = (0, 0, 0)
             self.angle = math.pi/2
             self.type = "sphere"
-            self.name = n
+            self.name = name
             self.numType = 2
+            self.reflectivity = reflectivity
+
+        def getName(self):
+            return self.name
 
         def getRadius(self):
             return self.radius
@@ -52,11 +56,14 @@ class Sphere:
         def setVelocity(self, v):
             self.velocity = v
 
+        def getRelectivity(self):
+            return self.reflectivity
 
 
 
 
-# Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier, fram rate target
+
+# Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier, fram rate target, pixel type(0 = circles, 1 = squares), adaptive FPS targeting on/off(true/false)
 wS = 1000
 wA = wS * wS
 cameraLocX = 0
@@ -67,7 +74,7 @@ phiH = 1
 thetaH = 1
 phiDirec = 90
 thetaDirec = 90
-res = 1000
+res = 1110
 fovPHI = 90
 fovTHETA = 90
 dppPHI = fovPHI / math.sqrt(res)
@@ -76,12 +83,14 @@ speedMult = .1
 turnMult = .1
 frTarget = 10
 pixlType = 1
+adaptiveFPS = False
 
 #light source coordinates
-lx = 1.5
-ly = 8
+lx = 1
+ly = 0
 lz = 0
 
+sphereLight = Sphere("LightSource", 0.1, 0, 100, 1, (255, 255, 255), (lx, ly, lz))
 
 
 #point locations and colors
@@ -96,15 +105,15 @@ cubeZ = [10]
 cubeS = [5]
 cubeC = [(0, 0, 150)]
 
-#sphere creations, (radii, mass, elasticity, color, position)
-sphere1 = Sphere("worldObject", 2, 100, 1, (127, 127, 127), (0, 10, 0))
-sphere2 = Sphere("worldObject", 1, 10, 1, (0, 0, 150), (4, 10, 0))
-sphere3 = Sphere("worldObject", 0.5, 5, 1, (255, 255, 255), (0, 3, 0))
+#sphere creations, (name, radii, reflectivity, mass, elasticity, color, position)
+sphere1 = Sphere("worldObject", 2, 1, 100, 1, (127, 127, 127), (1, 2, 0))
+sphere2 = Sphere("worldObject", 1, 1, 10, 1, (0, 0, 150), (3, 0, 0))
+sphere3 = Sphere("worldObject", 0.5, 1, 5, 1, (255, 255, 255), (-1, 0, 0))
 
-sphs = [sphere1, sphere2, sphere3]
+sphs = [sphere1, sphere2, sphere3, sphereLight]
 
 # all of the object lists (0 = point, 1 = cube, 2 = sphere)
-ob = [sphere1, sphere2, sphere3]
+ob = [sphere1, sphere2, sphere3, sphereLight]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -189,7 +198,7 @@ def checkSphere(x0, y0, z0, sphere, r, phi, theta):
         d = 1000000
         return False, d, (0, 0, 0)
 
-def sphereShader(x0, y0, z0, sphere, r, phi, theta):
+def sphereShader(x0, y0, z0, sphere, r, phi, theta, userLight):
     phi = math.radians(phi)
     theta = math.radians(theta)
 
@@ -224,20 +233,29 @@ def sphereShader(x0, y0, z0, sphere, r, phi, theta):
     lly = y0
     llz = z0
 
-    #find distance from camera or light source to intersect point
+    #find distance from camera or(/and) light source to intersect point
     d = math.sqrt(((llx - x) * (llx - x)) + ((lly - y) * (lly - y)) + ((llz - z) * (llz - z)))
-    #d = math.sqrt(((lx - x) * (lx - x)) + ((ly - y) * (ly - y)) + ((lz - z) * (lz - z)))
+    dd = math.sqrt(((lx - x) * (lx - x)) + ((ly - y) * (ly - y)) + ((lz - z) * (lz - z)))
+    #checks to see if the light source is toggled to the user or not
+    if userLight == False:
+        d += dd
     #now return a fraction dependant on the size of the distance
     maxDist = 1
 
     distanceThreshold = 1
-    if ((d*d) >= distanceThreshold):
+    if sphere.getName() == "LightSource":
+        return (maxDist / (distanceThreshold))
+    elif ((d*d) >= distanceThreshold):
         return (maxDist / (d * d))
     else:
-        return (maxDist / (distanceThreshold))
+        return (maxDist/ distanceThreshold)
 
 
 def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
+    ref = sphere.getRelectivity()
+    if ref == 0:
+        return sphere.getColor()
+
     #see notebook for further explanations on the math
     phi = math.radians(phi)
     theta = math.radians(theta)
@@ -259,7 +277,7 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
     h = pos[0]
     k = pos[1]
     l = pos[2]
-    # http://www.3dkingdoms.com/weekly/weekly.php?a=2
+
 
     #the direction vector of the reflection line
     d = h - xI
@@ -270,24 +288,17 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
     #Dot product of original vector and reflection vector
     dP = (d * a) + (e * b) + (f * c)
 
-    #THIS IS THE PART THAT DOES NOT WORK YET
-    #perpendicular d, e, and f
-    pd = (2 * dP * d) - a
-    pe = 1/e
-    pf = -f
-
-
-
-
-
     #direction vector of the reflected line
-
+    # http://www.3dkingdoms.com/weekly/weekly.php?a=2
     aR = -((2 * dP * d) - a) #xI - xR
     bR = -((2 * dP * e) - b) #yI - yR
     cR = -((2 * dP * f) - c) #zI - zR
 
+
     for ur in range(0, len(ob)):
-        if not ob[ur] == sphere:
+        #not ob[ur] == 0 is for points
+
+        if not ob[ur] == sphere and not ob[ur] == 0:
             pos2 = ob[ur].getPosition()
             h2 = pos2[0]
             k2 = pos2[1]
@@ -304,7 +315,9 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
             col = sphere.getColor()
             colR = ob[ur].getColor()
             if discrim >= 0:
-                return ((colR[0] + col[0])/2, (colR[1] + col[1])/2, (colR[2] + col[2])/2)
+                if ob[ur].getName() == "LightSource":
+                    return ob[ur].getColor()
+                return (((colR[0] * ref) + col[0])/2, ((colR[1] * ref) + col[1])/2, ((colR[2] * ref) + col[2])/2)
     return col
 
 
@@ -343,10 +356,11 @@ clock = pygame.time.Clock()
 count = 0
 
 while True:
-    if clock.get_fps() < frTarget:
-        res -= 1
-    else:
-        res += 1
+    if adaptiveFPS == True:
+        if clock.get_fps() < frTarget:
+            res -= 1
+        else:
+            res += 1
 
     dppPHI = fovPHI / math.sqrt(res)
     dppTHETA = fovTHETA / math.sqrt(res)
@@ -373,9 +387,10 @@ while True:
 
 
     if keys[pygame.K_SPACE]:
+        BLUE = (150, 150, 255)
         colorRand = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        ob.append(Sphere("projectile", 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
-        sphs.append(Sphere("projectile", 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
+        ob.append(Sphere("projectile", 1, 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
+        sphs.append(Sphere("projectile", 1, 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
 
     #moves sphere1 and does some funky color things
     if not count > 201:
@@ -443,7 +458,8 @@ while True:
             for u in range(0, len(ob)):
                 types = [0, 0, sphereRunner(ob[u])]
                 if inView(cameraLocX, cameraLocY, pX[objP], pY[objP], curPHI):
-                    k = types[ob[u].getNumType()]
+                    pass
+                    #k = types[ob[u].getNumType()]
 
                 if ob[u] == 0:
                     if inView(cameraLocX, cameraLocY, pX[objP], pY[objP], curPHI):
@@ -468,16 +484,20 @@ while True:
                     if inView(cameraLocX, cameraLocY, position[0], position[1], curPHI):
                         #boolean to check if the ray intersects the sphere, distance from camera to intersect point
                         cS, distS, Intersect = checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
-
+                        #user can toggle the light source so that it can be like a "flashlight"
+                        if keys[pygame.K_g]:
+                            userL = True
+                        else:
+                            userL = False
                         if cS and distS < objDist:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
+                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA, userL)
                             color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
                             if keys[pygame.K_t]:
                                 sS = 1
                             objC = (color[0] * sS, color[1] * sS, color[2] * sS)
                             objDist = distS
                         elif cS and objDist < 0:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
+                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA, userL)
                             color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
                             if keys[pygame.K_t]:
                                 sS = 1
