@@ -3,6 +3,7 @@ import pygame
 import os
 import random
 
+
 #sets the screen to the top left corner of the monitor
 os.environ["SDL_VIDEO_WINDOW_POS"] = "%d, %d" % (5, 5)
 pygame.init()
@@ -40,9 +41,8 @@ class Sphere:
             return self.color
 
         def move(self):
-            self.position()[0] += math.cos(self.angle) * self.speed
-            self.position()[1] += math.sin(self.angle) * self.speed
-            #(self.angle,self.speed) =
+            self.position = (self.position[0] + self.velocity[0], self.position[1] + self.velocity[1], self.position[2] + self.velocity[2])
+
 
         def getNumType(self):
             return self.numType
@@ -64,7 +64,7 @@ class Sphere:
 
 
 # Window size, window area, camera location X, camera location y, camera location z, the length of the direction vectors, length of phi-hat vectors, the length of the theta-hat vecotrs, resolution, field of view on the x-y plane, field of view on the z-axis, degrees per "pixel" for the phi angle, degrees per "pixel" for the theta angle, speed controller for the camera, look sensitivity multiplier, fram rate target, pixel type(0 = circles, 1 = squares), adaptive FPS targeting on/off(true/false)
-wS = 1000
+wS = 1100
 wA = wS * wS
 cameraLocX = 0
 cameraLocY = 0
@@ -85,12 +85,17 @@ frTarget = 10
 pixlType = 1
 adaptiveFPS = False
 
+#The other one was getting long so here is the second grouping of starting variables
+#music toggler
+music = False
+
 #light source coordinates
 lx = 1
 ly = 0
 lz = 0
 
 sphereLight = Sphere("LightSource", 0.1, 0, 100, 1, (255, 255, 255), (lx, ly, lz))
+
 
 
 #point locations and colors
@@ -110,16 +115,48 @@ sphere1 = Sphere("worldObject", 2, 1, 100, 1, (127, 127, 127), (1, 2, 0))
 sphere2 = Sphere("worldObject", 1, 1, 10, 1, (0, 0, 150), (3, 0, 0))
 sphere3 = Sphere("worldObject", 0.5, 1, 5, 1, (255, 255, 255), (-1, 0, 0))
 
-sphs = [sphere1, sphere2, sphere3, sphereLight]
 
-# all of the object lists (0 = point, 1 = cube, 2 = sphere)
+sphere1.setVelocity((0.00, 0.00, 0))
+
+
+# all of the object lists
 ob = [sphere1, sphere2, sphere3, sphereLight]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 
-def sphereRunner(obj):
+def sphereRunner(obj, camX, camY, camZ, phi, theta, oDist, oColor):
+    position = ob[u].getPosition()
+    if inView(cameraLocX, cameraLocY, position[0], position[1], curPHI):
+        # boolean to check if the ray intersects the sphere, distance from camera to intersect point
+        cS, distS, Intersect = checkSphere(cameraLocX, cameraLocY, cameraLocZ, ob[u], r, curPHI, curTHETA)
+        # user can toggle the light source so that it can be like a "flashlight"
+        if keys[pygame.K_g]:
+            userL = True
+        else:
+            userL = False
+        if cS and distS < oDist:
+            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, ob[u], r, curPHI, curTHETA, userL)
+            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
+            if keys[pygame.K_t]:
+                sS = 1
+            oColor = (color[0] * sS, color[1] * sS, color[2] * sS)
+            oDist = distS
+        elif cS and oDist < 0:
+            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, ob[u], r, curPHI, curTHETA, userL)
+            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
+            if keys[pygame.K_t]:
+                sS = 1
+            oColor = (color[0] * sS, color[1] * sS, color[2] * sS)
+
+            oDist = distS
+    return oColor, oDist
+
+def cubeRunner(obj):
+    pass
+
+def pointRunner(obj):
     pass
 
 def checkPoint(x0, y0, z0, x, y, z, r, phi, theta):
@@ -295,6 +332,10 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
     cR = -((2 * dP * f) - c) #zI - zR
 
 
+    phiR = math.atan(bR/aR)
+
+    col = sphere.getColor()
+
     for ur in range(0, len(ob)):
         #not ob[ur] == 0 is for points
 
@@ -304,21 +345,24 @@ def sphereReflection(x0, y0, z0, sphere, intersect, phi, theta):
             k2 = pos2[1]
             l2 = pos2[2]
             sR = ob[ur].getRadius()
-
             # a b and c for the quadratic involving the reflected line and other spheres
             bb = ((2 * xI * aR) - (2 * h2 * aR) + (2 * yI * bR) - (2 * k2 * bR) + (2 * zI * cR) - (2 * l2 * cR))
             aa = (aR * aR) + (bR * bR) + (cR * cR)
-            cc = ((xI * xI) + (yI * yI) + (zI * zI) + (h2 * h2) + (k2 * k2) + (l2 * l2) - (2 * h2 * xI) - (2 * k2 * yI) - (2 * l2 * zI) - (sR * sR))
+            cc = ((xI * xI) + (yI * yI) + (zI * zI) + (h2 * h2) + (k2 * k2) + (l2 * l2) - (2 * h2 * xI) - (
+                    2 * k2 * yI) - (2 * l2 * zI) - (sR * sR))
 
             # now do the formula of the discriminant (B^2 - 4AC)
             discrim = (bb * bb) - (4 * aa * cc)
-            col = sphere.getColor()
+
             colR = ob[ur].getColor()
             if discrim >= 0:
                 if ob[ur].getName() == "LightSource":
                     return ob[ur].getColor()
-                return (((colR[0] * ref) + col[0])/2, ((colR[1] * ref) + col[1])/2, ((colR[2] * ref) + col[2])/2)
-    return col
+                return (
+                    ((colR[0] * ref) + col[0]) / 2, ((colR[1] * ref) + col[1]) / 2, ((colR[2] * ref) + col[2]) / 2)
+
+    #returns color mixed with black void depending on its reflectivity
+    return col #(col[0] * (1.1-ref), col[1] * (1.1-ref), col[2] * (1.1-ref))
 
 
 #checks to make sure that the object is in front of the camera
@@ -355,7 +399,12 @@ clock = pygame.time.Clock()
 
 count = 0
 
+if music == True:
+    pygame.mixer.music.load("TheOuterWorlds.mp3")
+    pygame.mixer.music.play()
+
 while True:
+    sphere1.move()
     if adaptiveFPS == True:
         if clock.get_fps() < frTarget:
             res -= 1
@@ -390,16 +439,6 @@ while True:
         BLUE = (150, 150, 255)
         colorRand = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         ob.append(Sphere("projectile", 1, 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
-        sphs.append(Sphere("projectile", 1, 0.5, 5, 1, colorRand, (cameraLocX, cameraLocY, cameraLocZ)))
-
-    #moves sphere1 and does some funky color things
-    if not count > 201:
-        count += 1
-    else:
-        Co = sphere1.getColor()
-        p = sphere1.getPosition()
-        sphere1.setPosition((p[0] + 0.01, p[1] + 0.01, p[2] + 0.00))
-        #sphere1.setColor((random.randint(Co[0] - 3, Co[0] + 3), random.randint(Co[1] - 3, Co[1] + 3), random.randint(Co[2] - 3, Co[2] + 3)))
 
 
 
@@ -446,73 +485,25 @@ while True:
 
     for f in range(int(pPR)):
         for l in range(int(pPR)):
-            # keeps track of how many objects per type are checked for
-            objP = 0
-            objS = 0
-            objC = 0
 
             #distance from camera to closest object that has intersect point with camera
             objDist = -1
             #Color of closest object to camera that intersects with ray
             objC = (0, 0, 0)
             for u in range(0, len(ob)):
-                types = [0, 0, sphereRunner(ob[u])]
-                if inView(cameraLocX, cameraLocY, pX[objP], pY[objP], curPHI):
-                    pass
-                    #k = types[ob[u].getNumType()]
+                numType = ob[u].getNumType()
+                types = [pointRunner, cubeRunner, sphereRunner]
+                objC, objDist = types[numType](ob[u], cameraLocX, cameraLocY, cameraLocZ, curPHI, curTHETA, objDist, objC)
 
-                if ob[u] == 0:
-                    if inView(cameraLocX, cameraLocY, pX[objP], pY[objP], curPHI):
-                        # boolean to check if the ray intersects the sphere, distance from camera to intersect point
-                        cP, distP = checkPoint(cameraLocX, cameraLocY, cameraLocZ, pX[objP], pY[objP], pZ[objP], r, curPHI, curTHETA)
-                        if cP and distP < objDist:
-                            objC = pColor[objP]
-                            objDist = distP
-                        elif cP and objDist < 0:
-                            objC = pColor[objP]
-                            objDist = distP
-                    objP += 1
-                #cube code needs to be updated
-                elif ob[u] == 1:
-                    if inView(cameraLocX, cameraLocY, cubeX[objC], cubeY[objC], curPHI):
-                        if checkCube():
-                            pygame.draw.circle(window, cubeC[objC], (int(curX), int(curY)), int(n / 2))
-                    objC += 1
-
-                elif ob[u].getType() == "sphere":
-                    position = sphs[objS].getPosition()
-                    if inView(cameraLocX, cameraLocY, position[0], position[1], curPHI):
-                        #boolean to check if the ray intersects the sphere, distance from camera to intersect point
-                        cS, distS, Intersect = checkSphere(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA)
-                        #user can toggle the light source so that it can be like a "flashlight"
-                        if keys[pygame.K_g]:
-                            userL = True
-                        else:
-                            userL = False
-                        if cS and distS < objDist:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA, userL)
-                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
-                            if keys[pygame.K_t]:
-                                sS = 1
-                            objC = (color[0] * sS, color[1] * sS, color[2] * sS)
-                            objDist = distS
-                        elif cS and objDist < 0:
-                            sS = sphereShader(cameraLocX, cameraLocY, cameraLocZ, sphs[objS], r, curPHI, curTHETA, userL)
-                            color = sphereReflection(cameraLocX, cameraLocY, cameraLocZ, ob[u], Intersect, curPHI, curTHETA)
-                            if keys[pygame.K_t]:
-                                sS = 1
-                            objC = (color[0] * sS, color[1] * sS, color[2] * sS)
-
-                            objDist = distS
-                    objS += 1
 
 
             #draw the pixel based on which object is closest
             if objDist >= 0:
-                pixlRect = pygame.Rect(curX, curY, n, n)
+
                 if pixlType == 0:
                     pygame.draw.circle(window, objC, (int(curX), int(curY)), int(n / 2))
                 elif pixlType == 1:
+                    pixlRect = pygame.Rect(curX, curY, n, n)
                     pygame.draw.rect(window, objC, pixlRect)
 
 
